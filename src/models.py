@@ -11,7 +11,13 @@ from sklearn.metrics import classification_report, confusion_matrix, f1_score
 
 class EfficientNet_2CLS(nn.Module):
   """
-  Clase
+  Clase que implementa un modelo de clasificación binaria basado en EfficientNetB6.
+
+  Args:
+      model (torchvision.models | torch.nn.Module): Modelo preentrenado de torchvision. Por defecto, EfficientNetB6.
+
+  Returns:
+      nn.Module: Modelo de clasificación binaria adaptado.
   """
   def __init__(self, model=efficientnet_b6(weights='IMAGENET1K_V1')):
     super().__init__()
@@ -19,9 +25,9 @@ class EfficientNet_2CLS(nn.Module):
     self.model = model.to(self.device)
     self.model.to(self.device)
     self.ring_type = ["none", "ring"]
-    # Model configuration
+    # Configuración del modelo
     self.model.classifier[-1] = nn.Linear(self.model.classifier[-1].in_features, 1)
-    # Training hyperparameters
+    # Hiperparámetros de entrenamiento
     self.num_epochs = 15
     self.optimizer = torch.optim.Adam(self.model.parameters(), lr=0.0001, weight_decay=1e-4)
     self.criterion = torch.nn.BCEWithLogitsLoss()
@@ -29,10 +35,17 @@ class EfficientNet_2CLS(nn.Module):
 
 
   def forward(self, x):
+    """Forward pass del modelo."""
     return self.model(x)
 
 
   def load_model(self, path):
+    """
+    Carga un modelo pre-entrenado desde un archivo .pt
+
+    Args:
+        path (str | Path): Ruta al archivo del modelo.
+    """
     self.model = torch.load(str(path), weights_only=False, map_location=self.device)
 
 
@@ -46,7 +59,7 @@ class EfficientNet_2CLS(nn.Module):
 
   def train_model(self, train_dataloader, val_dataloader, epochs=None, fase=1, return_history=False):
     """
-    Entrena el modelo YOLO adaptado para clasificación binaria ('none' vs 'ring')
+    Entrena el modelo adaptado para clasificación binaria ('none' vs 'ring')
     siguiendo un esquema de fases de fine-tuning.
 
     Args:
@@ -179,6 +192,15 @@ class EfficientNet_2CLS(nn.Module):
 
 
   def predict_supervised(self, val_dataloader):
+    """
+    Realiza predicciones supervisadas en modo evaluación.
+
+    Args:
+        val_dataloader (DataLoader): DataLoader con datos de validación
+
+    Returns:
+        tuple: (probabilidades, etiquetas) como arrays numpy
+    """
     self.model.eval()
     all_preds = []
     all_labels = []
@@ -201,6 +223,15 @@ class EfficientNet_2CLS(nn.Module):
   
 
   def predict(self, dataloader):
+    """
+    Realiza predicciones en modo inferencia.
+
+    Args:
+        dataloader (DataLoader): DataLoader con imágenes a predecir
+
+    Returns:
+        tuple: (probabilidades, rutas) como arrays numpy
+    """
     self.model.eval()
     all_probs = []
     all_paths = []
@@ -219,7 +250,19 @@ class EfficientNet_2CLS(nn.Module):
     return probs_all, paths_all
 
 
-  def evaluation(self, val_dataloader, use_best_th=True, threshold=None, ax=None):#return_fig=False):
+  def evaluation(self, val_dataloader, use_best_th=True, threshold=None, ax=None):
+    """
+    Evalúa el modelo y genera métricas y matriz de confusión.
+
+    Args:
+        val_dataloader (DataLoader): DataLoader con datos de validación
+        use_best_th (bool): Si True, usa el mejor threshold encontrado
+        threshold (float): Threshold específico a usar si use_best_th=False
+        ax (matplotlib.axes.Axes): Eje de matplotlib donde dibujar la matriz de confusión
+
+    Returns:
+        dict: Reporte de clasificación si ax proporcionado, None en caso contrario
+    """
     self.model.eval()
     all_preds = []
     all_labels = []
@@ -274,6 +317,15 @@ class EfficientNet_2CLS(nn.Module):
 
 
   def get_activation(self, name):
+    """
+    Hook para obtener activaciones de una capa.
+
+    Args:
+        name (str): Nombre de la capa
+
+    Returns:
+        función hook que guarda la activación
+    """
     self.activation = {}
     def hook(model, input, output):
         self.activation[name] = output.detach()
@@ -281,10 +333,21 @@ class EfficientNet_2CLS(nn.Module):
 
 
   def get_attention(self):
+    """Registra hook para obtener mapa de atención de la última capa."""
     return self.model.features[8].register_forward_hook(self.get_activation('att_layer')) # pull attention
 
 
   def return_attention_map(self, image, best_th=0.5):
+    """
+    Genera mapa de atención para una imagen.
+
+    Args:
+        image (Tensor): Tensor de imagen de entrada
+        best_th (float): Threshold para clasificación binaria
+
+    Returns:
+        tuple: (mapa_atención, predicción_binaria, probabilidad)
+    """
     layer_name = "att_layer"
     get_attention = self.get_attention()
     self.model.eval()
@@ -302,7 +365,13 @@ class EfficientNet_2CLS(nn.Module):
 
 class DINO_2CLS(nn.Module):
   """
-  Clase
+  Clase que implementa un modelo de clasificación binaria basado en DINOv2 ViT.
+
+  Args:
+      model (transformers.PreTrainedModel | torch.nn.Module): Modelo preentrenado de transformers. Por defecto, DINOv2 ViT Base.
+
+  Returns:
+      nn.Module: Modelo de clasificación binaria adaptado.
   """
   def __init__(self, model=AutoModel.from_pretrained("facebook/dinov2-base")):
     super().__init__()
@@ -310,9 +379,9 @@ class DINO_2CLS(nn.Module):
     self.model = model.to(self.device)
     self.model.to(self.device)
     self.ring_type = ["none", "ring"]
-    # Model configuration
+    # Configuración del modelo
     self.model.classifier = torch.nn.Linear(self.model.config.hidden_size, 1)
-    # Training hyperparameters
+    # Hiperparámetros de entrenamiento
     self.num_epochs = 15
     self.optimizer = torch.optim.Adam(self.model.parameters(), lr=0.0001, weight_decay=1e-4)
     self.criterion = torch.nn.BCEWithLogitsLoss()
@@ -320,10 +389,17 @@ class DINO_2CLS(nn.Module):
 
 
   def forward(self, x):
+    """Forward pass del modelo."""
     return self.model(x)
 
 
   def load_model(self, path):
+    """
+    Carga un modelo pre-entrenado desde un archivo .pt
+
+    Args:
+        path (str | Path): Ruta al archivo del modelo
+    """
     self.model = torch.load(str(path), weights_only=False, map_location=self.device)
 
 
@@ -337,7 +413,7 @@ class DINO_2CLS(nn.Module):
 
   def train_model(self, train_dataloader, val_dataloader, epochs=None, fase=1, return_history=False):
     """
-    Entrena el modelo YOLO adaptado para clasificación binaria ('none' vs 'ring')
+    Entrena el modelo adaptado para clasificación binaria ('none' vs 'ring')
     siguiendo un esquema de fases de fine-tuning.
 
     Args:
@@ -468,6 +544,15 @@ class DINO_2CLS(nn.Module):
 
 
   def predict_supervised(self, val_dataloader):
+    """
+    Realiza predicciones supervisadas en modo evaluación.
+
+    Args:
+        val_dataloader (DataLoader): DataLoader con datos de validación
+
+    Returns:
+        tuple: (probabilidades, etiquetas) como arrays numpy
+    """
     self.model.eval()
     all_preds = []
     all_labels = []
@@ -491,6 +576,15 @@ class DINO_2CLS(nn.Module):
 
 
   def predict(self, dataloader):
+    """
+    Realiza predicciones en modo inferencia.
+
+    Args:
+        dataloader (DataLoader): DataLoader con imágenes a predecir
+
+    Returns:
+        tuple: (probabilidades, rutas) como arrays numpy
+    """
     self.model.eval()
     all_probs = []
     all_paths = []
@@ -510,7 +604,19 @@ class DINO_2CLS(nn.Module):
     return probs_all, paths_all
 
 
-  def evaluation(self, val_dataloader, use_best_th=True, threshold=None, ax=None):#return_fig=False):
+  def evaluation(self, val_dataloader, use_best_th=True, threshold=None, ax=None):
+    """
+    Evalúa el modelo y genera métricas y matriz de confusión.
+
+    Args:
+        val_dataloader (DataLoader): DataLoader con datos de validación
+        use_best_th (bool): Si True, usa el mejor threshold encontrado
+        threshold (float): Threshold específico a usar si use_best_th=False
+        ax (matplotlib.axes.Axes): Eje de matplotlib donde dibujar la matriz de confusión
+
+    Returns:
+        dict: Reporte de clasificación si ax proporcionado, None en caso contrario
+    """
     self.model.eval()
     all_preds = []
     all_labels = []
@@ -566,6 +672,15 @@ class DINO_2CLS(nn.Module):
 
 
   def get_activation(self, name):
+    """
+    Hook para obtener activaciones de una capa.
+
+    Args:
+        name (str): Nombre de la capa
+
+    Returns:
+        función hook que guarda la activación
+    """
     self.activation = {}
     def hook(model, input, output):
         self.activation[name] = output.detach()
@@ -573,10 +688,21 @@ class DINO_2CLS(nn.Module):
 
 
   def get_attention(self):
+    """Registra hook para obtener mapa de atención de la última capa."""
     return self.model.encoder.layer[-1].register_forward_hook(self.get_activation('att_layer')) # pull attention
 
 
   def return_attention_map(self, image, best_th=0.5):
+    """
+    Genera mapa de atención para una imagen.
+
+    Args:
+        image (Tensor): Tensor de imagen de entrada
+        best_th (float): Threshold para clasificación binaria
+
+    Returns:
+        tuple: (mapa_atención, predicción_binaria, probabilidad)
+    """
     layer_name = "att_layer"
     get_attention = self.get_attention()
     self.model.eval()

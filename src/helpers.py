@@ -23,6 +23,15 @@ from astropy.visualization import make_lupton_rgb, ZScaleInterval, LogStretch, M
 
 # Utils
 def read_fits_file(file_path):
+    """
+    Lee un archivo FITS y extrae los canales R, G, I.
+    
+    Args:
+        file_path (str): Ruta al archivo FITS con bandas G, R, I.
+
+    Returns:
+        tuple: (r_bands, g_bands, i_bands) arrays numpy de cada canal
+    """
     with fits.open(file_path) as hdul:
         data = hdul[0].data
         r_bands = data[1]
@@ -33,6 +42,10 @@ def read_fits_file(file_path):
 
 ## Transfromaciones
 class Transformations:
+    """
+    Clase estática que implementa diferentes transformaciones para imágenes astronómicas.
+    Incluye métodos para stack RGB, normalización logarítmica y unsharp masking.
+    """
     @staticmethod
     def log_n_scale_transform(img_data, log_a=1000, clip_mode='minmax', med_val=20):
         """
@@ -122,6 +135,7 @@ class Transformations:
     @staticmethod
     def rgi_unsharp_mask(channel_r, channel_g, channel_i):
         """Aplicar transformaciones Unsharp Masking a un stack.
+        
         Args:
             channel_r (np.ndarray): Canal R.
             channel_g (np.ndarray): Canal G.
@@ -149,11 +163,12 @@ class Transformations:
         Aplica PCA a un stack multicanal (R, G, I) y retorna métricas clave.
 
         Args:
-            channel_r, channel_g, channel_i (np.ndarray): Canales individuales.
-            n_components (int): Número de componentes PCA.
+            channel_r (np.ndarray): Canal R.
+            channel_g (np.ndarray): Canal G.
+            channel_i (np.ndarray): Canal I.
 
         Returns:
-            dict: {'var_ratio', 'cum_var', 'vector_resumen', 'snr_pca'}
+            np.ndarray: Imagen del primer componente principal.
         """
         channel_r = Transformations.log_n_scale_transform(channel_r)
         channel_g = Transformations.log_n_scale_transform(channel_g)
@@ -182,6 +197,7 @@ class Transformations:
     @staticmethod
     def rgi_canny_stack(channel_r, channel_g, channel_i):
         """ Aplicar transformaciones Canny a un stack.
+
         Args:
             channel_r (np.ndarray): Canal R.
             channel_g (np.ndarray): Canal G.
@@ -204,6 +220,15 @@ class Transformations:
 
 # Clasificación
 class FitsInferenceDataset(torch.utils.data.Dataset):
+    """
+    Dataset para inferencia de imágenes FITS. Lee y preprocesa archivos FITS
+    aplicando transformaciones específicas para clasificación de anillos.
+
+    Attributes:
+        fits_files (list): Lista de rutas a archivos FITS.
+        preprocess (str): Tipo de preprocesamiento ('rgi_stack' o 'rgi_unsharp_mask').
+        transforms_dir (Path): Directorio para guardar imágenes preprocesadas.
+    """
     def __init__(self, fits_files, preprocess, transforms_dir):
         self.fits_files = fits_files
         self.preprocess = preprocess
@@ -213,10 +238,22 @@ class FitsInferenceDataset(torch.utils.data.Dataset):
             transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
             ])
 
+
     def __len__(self):
         return len(self.fits_files)
 
+
     def save_transformed_images(self, probs, paths, threshold, runs_dir, format='png'):
+        """
+        Guarda las imágenes preprocesadas según su clasificación.
+
+        Args:
+            probs (np.ndarray): Array de probabilidades predichas
+            paths (list): Lista de rutas de archivos FITS
+            threshold (float): Umbral para clasificación binaria
+            runs_dir (Path): Directorio de salida
+            format (str): Formato de guardado ('png', 'fits' o 'all')
+        """
         for prob, path in zip(probs, paths):
             if format == 'png' or format == 'all':
                 r_bands, g_bands, i_bands = read_fits_file(path)
@@ -247,6 +284,15 @@ class FitsInferenceDataset(torch.utils.data.Dataset):
 
 
     def __getitem__(self, idx):
+        """
+        Carga y preprocesa un archivo FITS.
+
+        Args:
+            idx: Índice del archivo a cargar
+
+        Returns:
+            tuple: (tensor_imagen, ruta_archivo)
+        """
         file_path = self.fits_files[idx]
         r_bands, g_bands, i_bands = read_fits_file(file_path)
 
@@ -261,6 +307,17 @@ class FitsInferenceDataset(torch.utils.data.Dataset):
     
 
 def create_run_directory(modelo, preprocesamiento, format):
+    """
+    Crea estructura de directorios para una nueva ejecución.
+
+    Args:
+        modelo (str): Nombre del modelo usado
+        preprocesamiento (str): Tipo de preprocesamiento
+        format (str): Formato de guardado ('png', 'fits', 'all')
+
+    Returns:
+        Path: Ruta al directorio creado
+    """
     run_id = 0
     name_folder = f'inference_{modelo}_{preprocesamiento}'
     while True:
@@ -284,6 +341,20 @@ def create_run_directory(modelo, preprocesamiento, format):
 
 
 def classification_inference(PREPROCESAMIENTO, MODELO, RUTA_FITS, RUTA_MODELOS, save_format='png', threshold=0.5):
+    """
+    Pipeline completo de inferencia para clasificación de anillos.
+
+    Args:
+        PREPROCESAMIENTO (str): Tipo de preprocesamiento de imagen
+        MODELO (str): Nombre del modelo a usar
+        RUTA_FITS (str): Ruta a los archivos FITS
+        RUTA_MODELOS (str): Ruta a los modelos guardados
+        save_format (str): Formato para guardar resultados ('png', 'fits', 'all')
+        threshold (float): Umbral de clasificación
+
+    Returns:
+        Path: Directorio con resultados de inferencia
+    """
     print('=== Leyendo archivos FITS de la ruta:', RUTA_FITS)
     if isinstance(RUTA_FITS, str):
         ruta_fits = Path(RUTA_FITS)
@@ -1042,6 +1113,16 @@ _RING_COLORS = {
 
 
 def ring_segmentation_inference(fits_path, ring_type, show_mask, runs_dir, display=True):
+    """
+    Pipeline de inferencia para segmentación de anillos.
+
+    Args:
+        fits_path (Path): Ruta al archivo FITS
+        ring_type (str): Tipo de anillo a buscar ('inner', 'outer', 'inner+outer')
+        show_mask (bool): Si True, muestra máscara de segmentación
+        runs_dir (Path): Directorio para resultados
+        display (bool): Si True, muestra visualización con matplotlib
+    """
     if isinstance(runs_dir, str):
         runs_dir = Path(runs_dir)
 
