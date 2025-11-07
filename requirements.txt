@@ -1,0 +1,26 @@
+# ML Framework
+torch>=2.0.0
+torchvision>=0.15.0
+transformers>=4.30.0
+scikit-learn>=1.2.0
+
+# Procesamiento de imágenes
+opencv-python>=4.7.0
+scikit-image>=0.20.0
+astropy>=5.2
+
+# Análisis y Visualización de Datos
+numpy>=1.23.0
+pandas>=2.0.0
+scipy>=1.10.0
+matplotlib>=3.7.0
+seaborn>=0.12.0
+
+# Jupyter (opcional, pero recomendado para notebooks)
+jupyter>=1.0.0
+notebook>=6.5.0
+ipywidgets>=8.0.0
+
+# Nota: Para soporte de GPU, instala la variante de PyTorch con CUDA:
+# pip install torch torchvision --index-url https://download.pytorch.org/whl/cu128
+# (ajusta cu128 para que coincida con tu versión de CUDA)
