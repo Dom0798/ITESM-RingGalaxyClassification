@@ -4,8 +4,8 @@ En esta carpeta se encuentran los archivos necesarios para obtener predicciones 
 
 ## Modelos
 Las clases de los modelos existentes se encuentran en el archivo [models.py](models.py):
-- EfficientNet_2CLS: Clase creada para el modelo EfficientNet B6 reentrenado.
-- DINO_2CLS: Clase creada para el modelo DINOv2 ViT Base reentrenado.
+- EfficientNet_2CLS: Clase creada para el modelo EfficientNet B6 reentrenado. Se pueden encontrar los archivos pt de los modelos por cada preprocesamiento en Kaggle ([EfficientNetB6_rgi_stack](https://www.kaggle.com/models/domenicomoralesortiz/efficientnetb6-rgi-stack), [EfficientNetB6_rgi_unsharp_mask](https://www.kaggle.com/models/domenicomoralesortiz/efficientnetb6-rgi-unsharp-mask))
+- DINO_2CLS: Clase creada para el modelo DINOv2 ViT Base reentrenado. Se pueden encontrar los archivos pt de los modelos por cada preprocesamiento en Kaggle ([DINOv2ViTBase_rgi_stack](https://www.kaggle.com/models/domenicomoralesortiz/dinov2vitbase-rgi-stack), [DINOv2ViTBase_rgi_unsharp_mask](https://www.kaggle.com/models/domenicomoralesortiz/dinov2vitbase-rgi-unsharp-mask))
 
 
 ## Funciones
